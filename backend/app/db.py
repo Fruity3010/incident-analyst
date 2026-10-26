@@ -22,6 +22,30 @@ def now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+# Different spellings of the same country, mapped to the one name we store.
+# Without this, a search for "Ivory Coast" misses a report saved as "Côte d'Ivoire".
+COUNTRY_ALIASES = {
+    "ivory coast": "Côte d'Ivoire",
+    "cote d'ivoire": "Côte d'Ivoire",
+    "côte d'ivoire": "Côte d'Ivoire",
+    "usa": "United States",
+    "us": "United States",
+    "united states of america": "United States",
+    "uk": "United Kingdom",
+    "great britain": "United Kingdom",
+    "uae": "United Arab Emirates",
+    "drc": "Democratic Republic of the Congo",
+    "dr congo": "Democratic Republic of the Congo",
+    "the gambia": "Gambia",
+    "cape verde": "Cabo Verde",
+}
+
+
+def canonical_country(name: str) -> str:
+    name = name.strip()
+    return COUNTRY_ALIASES.get(name.lower(), name)
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -95,7 +119,7 @@ def save_report(db: Session, extraction: IncidentExtraction, original_text: str,
         organisations=extraction.organisations,
         amounts=[a.model_dump() for a in extraction.amounts],
         source_name=source_name,
-        locations=[ReportLocation(country=loc.country.strip(), city=loc.city) for loc in extraction.locations],
+        locations=[ReportLocation(country=canonical_country(loc.country), city=loc.city) for loc in extraction.locations],
     )
     db.add(report)
     db.commit()
@@ -114,8 +138,9 @@ def search_reports(db: Session, filters: ReportFilters, limit: int = 50) -> list
     if filters.date_to:
         q = q.where(Report.incident_date <= filters.date_to)
     if filters.country:
-        # Case-insensitive match on any of the report's locations
-        in_country = select(ReportLocation.report_id).where(func.lower(ReportLocation.country) == filters.country.strip().lower())
+        # "Nigeria, Ghana" matches reports in either country (case-insensitive, aliases resolved)
+        wanted = {canonical_country(c).lower() for c in filters.country.split(",") if c.strip()}
+        in_country = select(ReportLocation.report_id).where(func.lower(ReportLocation.country).in_(wanted))
         q = q.where(Report.id.in_(in_country))
     q = q.order_by(Report.incident_date.desc().nulls_last(), Report.id.desc()).limit(limit)
     return list(db.scalars(q))

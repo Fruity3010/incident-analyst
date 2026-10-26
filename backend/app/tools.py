@@ -42,7 +42,8 @@ def search_reports(
 ) -> str:
     """Find saved incident reports. All filters are optional and can be combined.
 
-    country: English country name, e.g. "Nigeria". language: original language code.
+    country: English country name, e.g. "Nigeria". For a region, list its countries
+    in ONE call, comma-separated, e.g. "Nigeria, Ghana, Senegal". language: original language code.
     date_from / date_to: YYYY-MM-DD, compared with the incident date.
     """
     filters = ReportFilters(crime_type=crime_type, country=country, language=language, date_from=date_from, date_to=date_to)

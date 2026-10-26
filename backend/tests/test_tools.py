@@ -37,6 +37,15 @@ def test_filters_by_each_field(reports):
     assert ids(ReportFilters(date_to=date(2024, 12, 31))) == {reports["abuja"]}
 
 
+def test_country_list_and_aliases(reports):
+    # A comma-separated list matches any of the countries (used for regions like "West Africa")
+    assert ids(ReportFilters(country="Senegal, Spain")) == {reports["dakar"], reports["madrid"]}
+    # Saved as "Ivory Coast", stored and found as "Côte d'Ivoire" under either spelling
+    abidjan = add_report("Phishing in Abidjan", "phishing", "fr", "Ivory Coast", "Abidjan")
+    assert ids(ReportFilters(country="Côte d'Ivoire")) == {abidjan}
+    assert ids(ReportFilters(country="ivory coast")) == {abidjan}
+
+
 def test_filters_combine_with_and(reports):
     assert ids(ReportFilters(crime_type="ransomware", country="Nigeria", date_from=date(2025, 1, 1))) == {reports["lagos"]}
     assert ids(ReportFilters(crime_type="phishing", country="Spain")) == set()
