@@ -1,5 +1,3 @@
-"""FastAPI app: REST endpoints for reports, stats, memory, and the agent chat (streamed with SSE)."""
-
 import json
 import logging
 from collections.abc import Iterator
@@ -17,7 +15,6 @@ from app.schemas import CrimeType, Language, ReportDetail, ReportFilters, Report
 
 log = logging.getLogger("uvicorn.error")
 
-# Single demo user. A real deployment would take this from the login session.
 DEMO_USER = "demo"
 
 
@@ -33,7 +30,6 @@ app.add_middleware(CORSMiddleware, allow_origins=config.CORS_ORIGINS, allow_meth
 
 @app.exception_handler(ProviderError)
 def provider_error_handler(_: Request, e: ProviderError):
-    """Missing key -> 503, rate limit -> 429, other provider errors -> 502."""
     return JSONResponse(status_code=e.status, content={"detail": str(e)})
 
 
@@ -42,12 +38,8 @@ def extraction_error_handler(_: Request, e: extraction.ExtractionError):
     return JSONResponse(status_code=422, content={"detail": str(e)})
 
 
-# ---------- health ----------
-
-
 @app.get("/api/health")
 def health():
-    """Which provider/model is active. Never fails, so the UI can show config problems."""
     try:
         provider = llm.get_provider()
         return {"status": "ok", "provider": provider.name, "model": provider.chat_model, "database": "postgresql" if config.IS_POSTGRES else "sqlite"}
@@ -55,12 +47,8 @@ def health():
         return {"status": "error", "provider": config.LLM_PROVIDER, "model": None, "error": str(e)}
 
 
-# ---------- reports ----------
-
-
 @app.post("/api/reports", response_model=ReportDetail, status_code=201)
 async def create_report(text: str | None = Form(None), file: UploadFile | None = None):
-    """Add a report from pasted text or an uploaded .txt/.pdf, then analyse and save it."""
     if file and file.filename:
         data = await file.read()
         if len(data) > config.MAX_UPLOAD_MB * 1024 * 1024:
@@ -70,7 +58,6 @@ async def create_report(text: str | None = Form(None), file: UploadFile | None =
         content, source = text, None
     else:
         raise HTTPException(400, "Paste some text or upload a .txt/.pdf file.")
-    # Blocking LLM calls: run in a worker thread so the server stays responsive
     from starlette.concurrency import run_in_threadpool
 
     return await run_in_threadpool(extraction.ingest, content, source)
@@ -108,16 +95,12 @@ def stats():
         }
 
 
-# ---------- agent chat ----------
-
-
 class ChatRequest(BaseModel):
     thread_id: str = Field(min_length=1, max_length=100)
     message: str = Field(min_length=1, max_length=4000)
 
 
 def _sse(events: Iterator[dict]) -> Iterator[str]:
-    """Format events as Server-Sent Events; turn errors into an error event."""
     try:
         for event in events:
             yield f"data: {json.dumps(event, default=str)}\n\n"
@@ -130,19 +113,14 @@ def _sse(events: Iterator[dict]) -> Iterator[str]:
 
 @app.post("/api/chat")
 def chat(req: ChatRequest):
-    """Stream the agent's answer: tool calls, tool results and answer tokens."""
-    llm.get_provider()  # fail fast with a JSON error (e.g. missing key) before streaming starts
+    llm.get_provider()
     events = agent.stream_answer(agent.get_agent(), req.message, req.thread_id, DEMO_USER)
     return StreamingResponse(_sse(events), media_type="text/event-stream")
 
 
 @app.get("/api/chat/{thread_id}")
 def chat_history(thread_id: str):
-    """The saved conversation for a thread (from the LangGraph checkpointer)."""
     return agent.get_history(agent.get_agent(), thread_id, DEMO_USER)
-
-
-# ---------- long-term memory ----------
 
 
 @app.get("/api/memory")

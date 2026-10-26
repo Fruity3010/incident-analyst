@@ -1,5 +1,3 @@
-"""Google Gemini provider, using the official google-genai SDK."""
-
 import base64
 import uuid
 from collections.abc import Callable
@@ -17,7 +15,6 @@ def _is_rate_limit(e: Exception) -> bool:
 
 
 def _retry_delay(e: Exception) -> float | None:
-    """Gemini's 429 says how long to wait, e.g. {"retryDelay": "18s"}."""
     details = (getattr(e, "details", None) or {}).get("error", {}).get("details", [])
     for d in details:
         if "retryDelay" in d:
@@ -26,7 +23,6 @@ def _retry_delay(e: Exception) -> float | None:
 
 
 def _call(fn: Callable):
-    """Run an SDK call with retry + backoff, turning SDK errors into our own error types."""
     try:
         return with_retry(fn, _is_rate_limit, attempts=5, retry_after=_retry_delay)
     except errors.APIError as e:
@@ -36,14 +32,12 @@ def _call(fn: Callable):
 
 
 def _to_contents(messages: list[BaseMessage]) -> list[types.Content]:
-    """Convert LangChain messages (what LangGraph stores) into Gemini's format."""
     contents: list[types.Content] = []
     for m in messages:
         if isinstance(m, HumanMessage):
             contents.append(types.Content(role="user", parts=[types.Part.from_text(text=m.content)]))
         elif isinstance(m, AIMessage):
             parts = [types.Part.from_text(text=m.content)] if m.content else []
-            # Gemini 3 models require their "thought signature" to be sent back with each tool call
             signatures = m.additional_kwargs.get("thought_signatures", {})
             for tc in m.tool_calls:
                 sig = signatures.get(tc["id"])
@@ -57,7 +51,6 @@ def _to_contents(messages: list[BaseMessage]) -> list[types.Content]:
                 contents.append(types.Content(role="model", parts=parts))
         elif isinstance(m, ToolMessage):
             part = types.Part.from_function_response(name=m.name, response={"result": m.content})
-            # Results of parallel tool calls go back together in one turn
             if contents and contents[-1].role == "user" and contents[-1].parts[0].function_response:
                 contents[-1].parts.append(part)
             else:
@@ -66,7 +59,6 @@ def _to_contents(messages: list[BaseMessage]) -> list[types.Content]:
 
 
 def _to_tools(tools: list[dict]) -> list[types.Tool]:
-    """Tools arrive in the common OpenAI-style JSON schema format."""
     if not tools:
         return []
     declarations = [
@@ -95,7 +87,6 @@ class GeminiProvider(LLMProvider):
         return response.text or ""
 
     def generate_json(self, system: str, prompt: str, schema: dict) -> str:
-        # Gemini's structured output: the response is constrained to this JSON schema
         cfg = types.GenerateContentConfig(
             system_instruction=system,
             temperature=0,
@@ -110,13 +101,10 @@ class GeminiProvider(LLMProvider):
             system_instruction=system,
             temperature=0.2,
             tools=_to_tools(tools),
-            # We run the tools ourselves (in LangGraph), so the SDK must not call them
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         )
         contents = _to_contents(messages)
 
-        # Rate-limit errors surface when the first chunk is requested,
-        # so we fetch the first chunk inside the retry wrapper.
         def start():
             it = iter(self.client.models.generate_content_stream(model=self.chat_model, contents=contents, config=cfg))
             return next(it, None), it

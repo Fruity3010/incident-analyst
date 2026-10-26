@@ -1,5 +1,3 @@
-"""HTTP layer: report endpoints, the streamed chat, and memory delete."""
-
 import json
 
 from fastapi.testclient import TestClient

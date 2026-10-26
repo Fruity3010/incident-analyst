@@ -1,15 +1,3 @@
-"""The agent's tools.
-
-Each tool is a normal Python function wrapped with LangChain's @tool, which
-turns its signature + docstring into a JSON schema the LLM can see. The LLM
-picks a tool and fills in arguments; Pydantic validates those arguments
-before the function runs. Database access goes through the fixed queries in
-db.py, so the LLM never writes SQL.
-
-Tools return plain text, because the result goes back into the LLM's context.
-Every report is shown as "[Report #id] title" so the agent can cite it.
-"""
-
 from datetime import date
 from typing import Literal
 
@@ -133,7 +121,6 @@ def remember_preference(preference: str, config: RunnableConfig) -> str:
     """Save a lasting preference or fact about the user, e.g. "Always answer in French" or
     "Focuses on West Africa". Only use this when the user asks you to remember something.
     """
-    # `config` is filled in by LangGraph (not by the LLM) and carries the user id
     user_id = config["configurable"]["user_id"]
     with db.session() as s:
         db.add_preference(s, user_id, preference)

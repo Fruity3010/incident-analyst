@@ -1,12 +1,3 @@
-"""Load 8 short demo reports so the app works instantly, without any LLM calls.
-
-ALL OF THESE ARE FICTIONAL. People, companies, groups and events are invented
-for the demo; only the countries and cities are real places.
-
-The extracted fields are written by hand here (the same shape the LLM would
-produce), so seeding needs no API key. Run:  python seed.py
-"""
-
 from datetime import date
 
 from app import db
@@ -224,7 +215,7 @@ def seed() -> int:
             print("Reports already exist, skipping seed.")
             return 0
         for r in REPORTS:
-            extraction = IncidentExtraction.model_validate(r["fields"])  # same validation as LLM output
+            extraction = IncidentExtraction.model_validate(r["fields"])
             db.save_report(s, extraction, r["original"], r["english"] or r["original"], SOURCE)
     print(f"Seeded {len(REPORTS)} fictional demo reports.")
     return len(REPORTS)

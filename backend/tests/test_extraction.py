@@ -1,5 +1,3 @@
-"""Structured extraction: validation, the retry-once rule, and saving."""
-
 import json
 
 import pytest
@@ -34,8 +32,8 @@ def test_valid_extraction_is_saved_with_translation(fake):
 
     with db.session() as s:
         saved = db.get_report(s, report.id)
-    assert saved.crime_type == "online_fraud"  # normalised by the validator
-    assert saved.original_language == "fr"  # taken from step 1, not step 2
+    assert saved.crime_type == "online_fraud"
+    assert saved.original_language == "fr"
     assert saved.english_text.startswith("Dakar authorities")
     assert saved.original_text == ARTICLE
     assert [(l.country, l.city) for l in saved.locations] == [("Senegal", "Dakar")]

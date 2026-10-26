@@ -1,5 +1,3 @@
-"""Full agent runs through the LangGraph graph, with the fake LLM choosing the tools."""
-
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
@@ -33,7 +31,6 @@ def test_full_run_calls_tool_streams_answer_and_cites(graph, fake):
     answer = "".join(e["text"] for e in events if e["type"] == "token")
     assert f"[Report #{report_id}]" in answer
 
-    # The second LLM call saw the tool result
     state = graph.get_state({"configurable": {"thread_id": "t1"}}).values
     assert [type(m) for m in state["messages"]] == [HumanMessage, AIMessage, ToolMessage, AIMessage]
 
@@ -59,7 +56,6 @@ def test_long_term_memory_is_saved_by_tool_and_loaded_next_session(graph, fake):
     with db.session() as s:
         assert [p.text for p in db.list_preferences(s, "alice")] == ["Always answer in French"]
 
-    # A brand-new thread (new session) gets the preference in its system prompt
     list(agent.stream_answer(graph, "hi", "session-2", "alice"))
     assert "- Always answer in French" in fake.chat_systems[-1]
     assert "(none saved)" in fake.chat_systems[0]

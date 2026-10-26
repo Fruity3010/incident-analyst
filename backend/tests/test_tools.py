@@ -1,5 +1,3 @@
-"""Each agent tool, and the parameterised SQL filters behind them."""
-
 from datetime import date
 
 import pytest
@@ -12,7 +10,6 @@ from tests.conftest import add_report
 
 @pytest.fixture
 def reports():
-    """Four fictional reports covering different types, countries, languages and dates."""
     return {
         "lagos": add_report("Ransomware hits Lagos hospital", "ransomware", "en", "Nigeria", "Lagos", date(2025, 3, 1)),
         "abuja": add_report("Phishing wave in Abuja", "phishing", "en", "Nigeria", "Abuja", date(2024, 11, 5)),
@@ -26,21 +23,16 @@ def ids(filters: ReportFilters) -> set[int]:
         return {r.id for r in db.search_reports(s, filters)}
 
 
-# ---------- SQL filters ----------
-
-
 def test_filters_by_each_field(reports):
     assert ids(ReportFilters(crime_type="ransomware")) == {reports["lagos"], reports["madrid"]}
-    assert ids(ReportFilters(country="nigeria")) == {reports["lagos"], reports["abuja"]}  # case-insensitive
+    assert ids(ReportFilters(country="nigeria")) == {reports["lagos"], reports["abuja"]}
     assert ids(ReportFilters(language="fr")) == {reports["dakar"]}
     assert ids(ReportFilters(date_from=date(2025, 1, 1))) == {reports["lagos"], reports["dakar"]}
     assert ids(ReportFilters(date_to=date(2024, 12, 31))) == {reports["abuja"]}
 
 
 def test_country_list_and_aliases(reports):
-    # A comma-separated list matches any of the countries (used for regions like "West Africa")
     assert ids(ReportFilters(country="Senegal, Spain")) == {reports["dakar"], reports["madrid"]}
-    # Saved as "Ivory Coast", stored and found as "Côte d'Ivoire" under either spelling
     abidjan = add_report("Phishing in Abidjan", "phishing", "fr", "Ivory Coast", "Abidjan")
     assert ids(ReportFilters(country="Côte d'Ivoire")) == {abidjan}
     assert ids(ReportFilters(country="ivory coast")) == {abidjan}
@@ -52,7 +44,6 @@ def test_filters_combine_with_and(reports):
 
 
 def test_injection_attempt_is_just_a_value(reports):
-    # The value is sent as a bound parameter, so it matches nothing instead of running
     assert ids(ReportFilters(country="Nigeria' OR '1'='1")) == set()
     assert len(ids(ReportFilters())) == 4
 
@@ -62,9 +53,6 @@ def test_invalid_filter_values_are_rejected():
         ReportFilters(crime_type="DROP TABLE reports")
     with pytest.raises(ValidationError):
         ReportFilters(date_from="last tuesday")
-
-
-# ---------- tools ----------
 
 
 def test_search_reports_tool_lists_ids_and_says_when_empty(reports):
@@ -126,6 +114,6 @@ def test_seed_data_is_valid_and_searchable():
     import seed
 
     assert seed.seed() == 8
-    assert seed.seed() == 0  # second run is a no-op
+    assert seed.seed() == 0
     assert "- ar: 2" in tools.stats.invoke({"group_by": "language"})
     assert "Casablanca" in tools.search_reports.invoke({"country": "Morocco", "language": "ar"})

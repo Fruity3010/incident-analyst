@@ -1,5 +1,3 @@
-"""Pydantic models: what the LLM must return, and what the API sends back."""
-
 from datetime import date, datetime
 from enum import StrEnum
 from typing import Literal
@@ -8,11 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CrimeType(StrEnum):
-    """The fixed list of categories. The LLM must pick one of these."""
-
     ransomware = "ransomware"
     phishing = "phishing"
-    online_fraud = "online_fraud"  # online fraud / scams
+    online_fraud = "online_fraud"
     business_email_compromise = "business_email_compromise"
     data_breach = "data_breach"
     money_laundering = "money_laundering"
@@ -59,16 +55,10 @@ class IncidentExtraction(BaseModel):
     @field_validator("crime_type", mode="before")
     @classmethod
     def normalise_crime_type(cls, v):
-        # Accept small variations like "Online Fraud" or "business-email-compromise"
         return v.strip().lower().replace(" ", "_").replace("-", "_") if isinstance(v, str) else v
 
 
-# ---------- API responses ----------
-
-
 class ReportOut(BaseModel):
-    """A saved report, as returned by the API."""
-
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -92,8 +82,6 @@ class ReportDetail(ReportOut):
 
 
 class ReportFilters(BaseModel):
-    """Filters shared by the REST API and the agent's search tool."""
-
     crime_type: CrimeType | None = None
     country: str | None = None
     language: Language | None = None

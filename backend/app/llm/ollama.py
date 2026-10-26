@@ -1,5 +1,3 @@
-"""Ollama provider: runs models locally through Ollama's REST API (no API key needed)."""
-
 import json
 import uuid
 
@@ -15,7 +13,6 @@ def _is_rate_limit(e: Exception) -> bool:
 
 
 def _to_messages(system: str, messages: list[BaseMessage]) -> list[dict]:
-    """Convert LangChain messages into Ollama's chat format."""
     out = [{"role": "system", "content": system}]
     for m in messages:
         if isinstance(m, HumanMessage):
@@ -56,7 +53,6 @@ class OllamaProvider(LLMProvider):
         return self._post({"messages": self._simple(system, prompt), "options": {"temperature": 0.2}})["message"]["content"]
 
     def generate_json(self, system: str, prompt: str, schema: dict) -> str:
-        # Ollama's structured output: `format` takes a JSON schema
         body = {"messages": self._simple(system, prompt), "format": schema, "options": {"temperature": 0}}
         return self._post(body)["message"]["content"]
 
@@ -71,7 +67,6 @@ class OllamaProvider(LLMProvider):
         text: list[str] = []
         tool_calls: list[dict] = []
         try:
-            # Ollama streams one JSON object per line
             with self.http.stream("POST", "/api/chat", json=body) as r:
                 if r.status_code >= 400:
                     raise ProviderError(f"Ollama error: {r.read().decode()}")

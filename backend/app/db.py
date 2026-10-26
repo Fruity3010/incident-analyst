@@ -1,9 +1,3 @@
-"""Database: SQLAlchemy tables plus every query the app runs.
-
-All queries are fixed Python code with bound parameters. The LLM only ever
-supplies filter *values* (validated by Pydantic first). It never writes SQL.
-"""
-
 from datetime import date, datetime, timezone
 
 from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, String, Text, create_engine, func, select
@@ -22,8 +16,6 @@ def now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-# Different spellings of the same country, mapped to the one name we store.
-# Without this, a search for "Ivory Coast" misses a report saved as "Côte d'Ivoire".
 COUNTRY_ALIASES = {
     "ivory coast": "Côte d'Ivoire",
     "cote d'ivoire": "Côte d'Ivoire",
@@ -62,14 +54,12 @@ class Report(Base):
     confidence: Mapped[float] = mapped_column(Float)
     original_text: Mapped[str] = mapped_column(Text)
     english_text: Mapped[str] = mapped_column(Text)
-    # Lists we only display, never filter on, are stored as JSON
     people: Mapped[list] = mapped_column(JSON, default=list)
     organisations: Mapped[list] = mapped_column(JSON, default=list)
     amounts: Mapped[list] = mapped_column(JSON, default=list)
     source_name: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
-    # Locations get their own table because we filter and group by country
     locations: Mapped[list["ReportLocation"]] = relationship(cascade="all, delete-orphan", lazy="selectin")
 
 
@@ -83,8 +73,6 @@ class ReportLocation(Base):
 
 
 class Preference(Base):
-    """Long-term memory: facts and preferences a user asked the agent to remember."""
-
     __tablename__ = "preferences"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -94,15 +82,11 @@ class Preference(Base):
 
 
 def init_db() -> None:
-    """Create tables if they don't exist (simple alternative to migrations for a demo)."""
     Base.metadata.create_all(engine)
 
 
 def session() -> Session:
     return Session(engine, expire_on_commit=False)
-
-
-# ---------- reports ----------
 
 
 def save_report(db: Session, extraction: IncidentExtraction, original_text: str, english_text: str, source_name: str | None) -> Report:
@@ -127,7 +111,6 @@ def save_report(db: Session, extraction: IncidentExtraction, original_text: str,
 
 
 def search_reports(db: Session, filters: ReportFilters, limit: int = 50) -> list[Report]:
-    """Filter reports. Each filter adds a WHERE clause with a bound parameter."""
     q = select(Report)
     if filters.crime_type:
         q = q.where(Report.crime_type == filters.crime_type.value)
@@ -138,7 +121,6 @@ def search_reports(db: Session, filters: ReportFilters, limit: int = 50) -> list
     if filters.date_to:
         q = q.where(Report.incident_date <= filters.date_to)
     if filters.country:
-        # "Nigeria, Ghana" matches reports in either country (case-insensitive, aliases resolved)
         wanted = {canonical_country(c).lower() for c in filters.country.split(",") if c.strip()}
         in_country = select(ReportLocation.report_id).where(func.lower(ReportLocation.country).in_(wanted))
         q = q.where(Report.id.in_(in_country))
@@ -155,9 +137,7 @@ def get_reports(db: Session, ids: list[int]) -> list[Report]:
 
 
 def count_by(db: Session, group_by: str) -> list[tuple[str, int]]:
-    """Counts per crime type, country or language, biggest first."""
     if group_by == "country":
-        # A report is counted once per distinct country it mentions
         column = ReportLocation.country
         n = func.count(func.distinct(ReportLocation.report_id)).label("n")
     elif group_by in ("crime_type", "language"):
@@ -167,9 +147,6 @@ def count_by(db: Session, group_by: str) -> list[tuple[str, int]]:
         raise ValueError(f"Can't group by {group_by!r}")
     q = select(column, n).group_by(column).order_by(n.desc(), column)
     return [(key, count) for key, count in db.execute(q)]
-
-
-# ---------- long-term memory ----------
 
 
 def list_preferences(db: Session, user_id: str) -> list[Preference]:

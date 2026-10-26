@@ -17,9 +17,7 @@ function storedThreadId(): string {
   try {
     const saved = localStorage.getItem(THREAD_KEY);
     if (saved) return saved;
-  } catch {
-    /* storage unavailable */
-  }
+  } catch {}
   return freshThreadId();
 }
 
@@ -27,9 +25,7 @@ function freshThreadId(): string {
   const id = crypto.randomUUID();
   try {
     localStorage.setItem(THREAD_KEY, id);
-  } catch {
-    /* storage unavailable */
-  }
+  } catch {}
   return id;
 }
 

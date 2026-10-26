@@ -1,5 +1,3 @@
-"""Picks the model provider from LLM_PROVIDER in .env."""
-
 from functools import lru_cache
 
 from app import config
@@ -10,7 +8,6 @@ __all__ = ["get_provider", "LLMProvider", "ProviderError", "ConfigError", "RateL
 
 @lru_cache
 def get_provider() -> LLMProvider:
-    """Created on first use (not at startup) so /api/health still works when a key is missing."""
     if config.LLM_PROVIDER == "gemini":
         from app.llm.gemini import GeminiProvider
 

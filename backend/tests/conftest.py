@@ -1,31 +1,26 @@
-"""Shared test setup: a temp SQLite database and a scripted fake LLM (no key, no network)."""
-
 import os
 import tempfile
 
-# Must run before `app` is imported: force a throwaway SQLite database
 os.environ["DATABASE_URL"] = ""
 os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="incident-tests-")
 
-from datetime import date  # noqa: E402
+from datetime import date
 
-import pytest  # noqa: E402
-from langchain_core.messages import AIMessage  # noqa: E402
+import pytest
+from langchain_core.messages import AIMessage
 
-from app import db  # noqa: E402
-from app.llm.base import LLMProvider  # noqa: E402
-from app.schemas import IncidentExtraction  # noqa: E402
+from app import db
+from app.llm.base import LLMProvider
+from app.schemas import IncidentExtraction
 
 
 class FakeProvider(LLMProvider):
-    """Returns pre-scripted replies so tests are fast and deterministic."""
-
     name = "fake"
     chat_model = "fake-model"
 
     def __init__(self):
-        self.json_replies: list[str] = []  # popped by generate_json
-        self.chat_replies: list[AIMessage] = []  # popped by chat
+        self.json_replies: list[str] = []
+        self.chat_replies: list[AIMessage] = []
         self.text_reply = "Fake summary."
         self.prompts: list[str] = []
         self.chat_systems: list[str] = []
@@ -60,7 +55,6 @@ def fake(monkeypatch) -> FakeProvider:
 
 
 def add_report(title="Ransomware hits hospital", crime_type="ransomware", language="en", country="Nigeria", city="Lagos", when=date(2025, 3, 1)) -> int:
-    """Insert a report directly (skipping the LLM) and return its id."""
     extraction = IncidentExtraction(
         title=title,
         summary=f"{title}. A fictional test report.",
