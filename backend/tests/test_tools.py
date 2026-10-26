@@ -111,3 +111,12 @@ def test_remember_preference_tool_uses_user_from_config():
     with db.session() as s:
         assert [p.text for p in db.list_preferences(s, "alice")] == ["Always answer in French"]
         assert db.list_preferences(s, "bob") == []
+
+
+def test_seed_data_is_valid_and_searchable():
+    import seed
+
+    assert seed.seed() == 8
+    assert seed.seed() == 0  # second run is a no-op
+    assert "- ar: 2" in tools.stats.invoke({"group_by": "language"})
+    assert "Casablanca" in tools.search_reports.invoke({"country": "Morocco", "language": "ar"})
