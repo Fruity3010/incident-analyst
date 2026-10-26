@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-gray-25: #fcfcfd;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f2f4f7;
+  --color-gray-200: #eaecf0;
+  --color-gray-300: #d0d5dd;
+  --color-gray-400: #98a2b3;
+  --color-gray-500: #667085;
+  --color-gray-600: #475467;
+  --color-gray-700: #344054;
+  --color-gray-800: #1d2939;
+  --color-gray-900: #101828;
+
+  --color-brand-50: #eff4ff;
+  --color-brand-100: #d9e5fe;
+  --color-brand-500: #3e7df8;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-900: #1e3a8a;
+
+  --color-chrome: #0a1628;
+}
+
+body {
+  background: #f6f7f9;
+  color: var(--color-gray-700);
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (width < 40rem) {
+  input, select, textarea { font-size: 16px; }
+}
+
+dialog::backdrop {
+  background: rgb(10 22 40 / 0.45);
+  backdrop-filter: blur(2px);
+}
