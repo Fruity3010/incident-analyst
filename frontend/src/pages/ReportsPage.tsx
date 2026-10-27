@@ -114,7 +114,7 @@ export default function ReportsPage() {
               </button>
             ) : (
               <>
-                Add one, or run <code className="rounded bg-gray-100 px-1">python seed.py</code> in backend/ to load the demo reports.
+                Add one, or run <code className="rounded bg-gray-100 px-1">python -m scripts.seed</code> in backend/ to load the demo reports.
               </>
             )}
           </Empty>

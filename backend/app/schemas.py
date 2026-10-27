@@ -87,3 +87,8 @@ class ReportFilters(BaseModel):
     language: Language | None = None
     date_from: date | None = None
     date_to: date | None = None
+
+
+class ChatRequest(BaseModel):
+    thread_id: str = Field(min_length=1, max_length=100)
+    message: str = Field(min_length=1, max_length=4000)

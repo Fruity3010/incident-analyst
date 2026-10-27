@@ -4,7 +4,7 @@ import uuid
 import httpx
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 
-from app import config
+from app.core import config
 from app.llm.base import ConfigError, LLMProvider, ProviderError, with_retry
 
 

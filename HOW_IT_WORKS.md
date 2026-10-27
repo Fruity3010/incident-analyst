@@ -4,7 +4,7 @@ A plain-English walkthrough of the code, following one report from upload to an 
 
 ## 1. Settings and the model provider
 
-- `app/config.py` reads everything from `backend/.env`: which provider (`LLM_PROVIDER`), model names, `DATABASE_URL`. If `DATABASE_URL` is empty, it points at a SQLite file in `backend/data/`, so the app runs without Docker.
+- `app/core/config.py` reads everything from `backend/.env`: which provider (`LLM_PROVIDER`), model names, `DATABASE_URL`. If `DATABASE_URL` is empty, it points at a SQLite file in `backend/data/`, so the app runs without Docker.
 - `app/llm/base.py` defines `LLMProvider`, the one interface the rest of the app uses:
   - `generate(system, prompt)`: plain text (used by the summarise and translate tools)
   - `generate_json(system, prompt, schema)`: JSON constrained to a schema (structured output)
@@ -15,7 +15,7 @@ A plain-English walkthrough of the code, following one report from upload to an 
 
 ## 2. Ingestion: from article to structured record
 
-Route: `POST /api/reports` in `app/main.py` → `create_report()`.
+Route: `POST /api/reports` in `app/api/reports.py` → `create_report()`. The logic lives in `app/services/extraction.py`.
 
 1. `extraction.read_upload()` turns a `.txt` or `.pdf` (via `pypdf`) into text. Pasted text is used as is.
 2. `extraction.ingest()` → `extraction.analyse()` makes **two structured LLM calls** through `structured_call()`:
@@ -30,7 +30,7 @@ Both prompts tell the model the article is **data, not instructions**, which is 
 
 ## 3. The database layer
 
-`app/db.py` holds the tables (`Report`, `ReportLocation`, `Preference`) and **every query the app runs**:
+`app/db/models.py` holds the tables (`Report`, `ReportLocation`, `Preference`), `app/db/session.py` the engine and sessions, and `app/db/queries.py` **every query the app runs**:
 
 - `search_reports(filters)`: builds a `SELECT` with one `WHERE` clause per filter. Values are always bound parameters. `country` accepts a comma-separated list ("Nigeria, Ghana") and matches any of them, ignoring case.
 - `get_report`, `get_reports`, `count_by(group_by)`: fixed queries.
@@ -40,7 +40,7 @@ The LLM never writes SQL. It only fills in filter values, which Pydantic validat
 
 ## 4. The tools
 
-`app/tools.py`. Each tool is a normal function with LangChain's `@tool` decorator, which turns the function's signature and docstring into a JSON schema the model sees.
+`app/agent/tools.py`. Each tool is a normal function with LangChain's `@tool` decorator, which turns the function's signature and docstring into a JSON schema the model sees.
 
 | Tool | What it does |
 | --- | --- |
@@ -55,7 +55,7 @@ Every report is printed as `[Report #id] title`, so the model has an exact citat
 
 ## 5. The LangGraph agent
 
-`app/agent.py`:
+`app/agent/graph.py`:
 
 ```
 START → load_memory → agent ⇄ tools → END
@@ -74,9 +74,9 @@ START → load_memory → agent ⇄ tools → END
 
 ## 6. The API and streaming
 
-- `POST /api/chat` (`chat()` in `app/main.py`) runs `agent.stream_answer()`, which streams the graph with `stream_mode=["custom", "updates"]` and turns it into simple events: `token`, `tool_call`, `tool_result`, `done`. `_sse()` formats them as Server-Sent Events and turns failures into an `error` event.
-- `GET /api/chat/{thread_id}` → `agent.get_history()` rebuilds the conversation from the checkpointer, so a page reload shows the chat again.
-- Provider errors become clean HTTP errors in `provider_error_handler` (503 missing key, 429 rate limit, 502 other).
+- `POST /api/chat` (`chat()` in `app/api/chat.py`) runs `graph.stream_answer()`, which streams the graph with `stream_mode=["custom", "updates"]` and turns it into simple events: `token`, `tool_call`, `tool_result`, `done`. `_sse()` formats them as Server-Sent Events and turns failures into an `error` event.
+- `GET /api/chat/{thread_id}` → `graph.get_history()` rebuilds the conversation from the checkpointer, so a page reload shows the chat again.
+- Provider errors become clean HTTP errors in `provider_error_handler` in `app/main.py` (503 missing key, 429 rate limit, 502 other). `app/main.py` only builds the app; each resource has its own router in `app/api/`.
 
 ## 7. The frontend
 
