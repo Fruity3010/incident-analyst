@@ -3,7 +3,8 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from app import db, extraction
+from app import db
+from app.services import extraction
 from app.schemas import IncidentExtraction, ReportFilters
 
 ARTICLE = "Les autorités de Dakar ont démantelé un réseau d'escroquerie en ligne visant des retraités en mars 2025."

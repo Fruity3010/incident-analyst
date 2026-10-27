@@ -3,7 +3,8 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from app import db, tools
+from app import db
+from app.agent import tools
 from app.schemas import ReportFilters
 from tests.conftest import add_report
 
@@ -111,7 +112,7 @@ def test_remember_preference_tool_uses_user_from_config():
 
 
 def test_seed_data_is_valid_and_searchable():
-    import seed
+    from scripts import seed
 
     assert seed.seed() == 8
     assert seed.seed() == 0
