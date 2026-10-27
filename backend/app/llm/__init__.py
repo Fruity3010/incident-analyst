@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from app import config
+from app.core import config
 from app.llm.base import ConfigError, LLMProvider, ProviderError, RateLimitError
 
 __all__ = ["get_provider", "LLMProvider", "ProviderError", "ConfigError", "RateLimitError"]

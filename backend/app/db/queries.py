@@ -1,20 +1,8 @@
-from datetime import date, datetime, timezone
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
-from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, String, Text, create_engine, func, select
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship
-
-from app import config
+from app.db.models import Preference, Report, ReportLocation
 from app.schemas import IncidentExtraction, ReportFilters
-
-if not config.IS_POSTGRES:
-    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-engine = create_engine(config.DATABASE_URL)
-
-
-def now() -> datetime:
-    return datetime.now(timezone.utc)
-
 
 COUNTRY_ALIASES = {
     "ivory coast": "Côte d'Ivoire",
@@ -36,57 +24,6 @@ COUNTRY_ALIASES = {
 def canonical_country(name: str) -> str:
     name = name.strip()
     return COUNTRY_ALIASES.get(name.lower(), name)
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-class Report(Base):
-    __tablename__ = "reports"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    title: Mapped[str] = mapped_column(String(200))
-    summary: Mapped[str] = mapped_column(Text)
-    original_language: Mapped[str] = mapped_column(String(8), index=True)
-    crime_type: Mapped[str] = mapped_column(String(40), index=True)
-    incident_date: Mapped[date | None] = mapped_column(Date, index=True)
-    confidence: Mapped[float] = mapped_column(Float)
-    original_text: Mapped[str] = mapped_column(Text)
-    english_text: Mapped[str] = mapped_column(Text)
-    people: Mapped[list] = mapped_column(JSON, default=list)
-    organisations: Mapped[list] = mapped_column(JSON, default=list)
-    amounts: Mapped[list] = mapped_column(JSON, default=list)
-    source_name: Mapped[str | None] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
-
-    locations: Mapped[list["ReportLocation"]] = relationship(cascade="all, delete-orphan", lazy="selectin")
-
-
-class ReportLocation(Base):
-    __tablename__ = "report_locations"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    report_id: Mapped[int] = mapped_column(ForeignKey("reports.id", ondelete="CASCADE"), index=True)
-    country: Mapped[str] = mapped_column(String(100), index=True)
-    city: Mapped[str | None] = mapped_column(String(100))
-
-
-class Preference(Base):
-    __tablename__ = "preferences"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(100), index=True)
-    text: Mapped[str] = mapped_column(String(500))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
-
-
-def init_db() -> None:
-    Base.metadata.create_all(engine)
-
-
-def session() -> Session:
-    return Session(engine, expire_on_commit=False)
 
 
 def save_report(db: Session, extraction: IncidentExtraction, original_text: str, english_text: str, source_name: str | None) -> Report:

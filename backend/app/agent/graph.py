@@ -11,8 +11,9 @@ from langgraph.config import get_stream_writer
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from app import config, db, llm
-from app.tools import ALL_TOOLS
+from app import db, llm
+from app.core import config
+from app.agent.tools import ALL_TOOLS
 
 TOOL_SCHEMAS = [convert_to_openai_tool(t) for t in ALL_TOOLS]
 

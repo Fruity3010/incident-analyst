@@ -3,7 +3,8 @@ import io
 from pydantic import BaseModel, ValidationError
 from pypdf import PdfReader
 
-from app import config, db, llm
+from app import db, llm
+from app.core import config
 from app.schemas import IncidentExtraction, Translation
 
 

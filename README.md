@@ -6,7 +6,7 @@ A full-stack AI agent app for analysing public news reports about crime and secu
 - **Ask the agent:** a **LangGraph** agent answers questions across all saved reports by choosing tools (search, get, summarise, stats, translate). It cites the reports it used and says so when it finds nothing.
 - **Memory:** short-term conversation memory (a persisted LangGraph checkpointer, so follow-ups like *"only the ones from 2025"* work) and long-term per-user preferences (*"always answer in French"*) stored in the database.
 
-> **Demo only.** This app is built for **public news articles**. Do not use it for real investigative, case or personal data. The 8 sample reports in `backend/seed.py` are **fictional**.
+> **Demo only.** This app is built for **public news articles**. Do not use it for real investigative, case or personal data. The 8 sample reports in `backend/scripts/seed.py` are **fictional**.
 
 ![Reports page](docs/screenshots/reports.png)
 
@@ -111,7 +111,7 @@ Tables are created on startup.
 
 ```bash
 cd backend
-python seed.py                         # 8 fictional demo reports, no LLM calls
+python -m scripts.seed                 # 8 fictional demo reports, no LLM calls
 uvicorn app.main:app --reload          # http://localhost:8000
 ```
 
@@ -150,7 +150,7 @@ Interactive docs: <http://localhost:8000/docs>.
 
 ## Design decisions
 
-**Tools instead of letting the LLM write SQL.** Each tool calls a fixed, parameterised query in `app/db.py`. The LLM only supplies filter *values*, which Pydantic validates (for example, `crime_type` must be one of the 9 allowed values) before they reach the database as bound parameters. This prevents SQL injection and prompt-injected queries, keeps the agent's abilities explicit and testable, and gives reviewers a readable trace of what it did.
+**Tools instead of letting the LLM write SQL.** Each tool calls a fixed, parameterised query in `app/db/queries.py`. The LLM only supplies filter *values*, which Pydantic validates (for example, `crime_type` must be one of the 9 allowed values) before they reach the database as bound parameters. This prevents SQL injection and prompt-injected queries, keeps the agent's abilities explicit and testable, and gives reviewers a readable trace of what it did.
 
 **Structured outputs.** Both ingestion steps use the provider's JSON-schema mode (`response_json_schema` for Gemini, `format` for Ollama), generated from the Pydantic models. The output is still validated with Pydantic, because models can break a schema. On invalid output we retry once, showing the model its answer and the validation errors. The fixed `CrimeType` enum keeps categories consistent for filtering and stats.
 
@@ -184,20 +184,24 @@ Interactive docs: <http://localhost:8000/docs>.
 ```
 backend/
   app/
-    main.py         FastAPI routes, SSE streaming
-    agent.py        LangGraph graph, system prompt, checkpointer
-    tools.py        The agent's tools
-    extraction.py   Translation + structured extraction with validation and retry
-    db.py           SQLAlchemy tables and every query (parameterised)
-    schemas.py      Pydantic models
-    llm/            Provider interface, Gemini and Ollama
-  seed.py           8 fictional demo reports (EN/FR/ES/AR)
-  tests/            pytest, fake LLM
+    main.py              FastAPI app: CORS, error handlers, routers
+    api/                 Routes: health, reports (+ stats), chat (SSE), memory
+    core/config.py       Settings from backend/.env
+    agent/graph.py       LangGraph graph, system prompt, checkpointer
+    agent/tools.py       The agent's tools
+    services/extraction.py  Translation + structured extraction with validation and retry
+    db/models.py         SQLAlchemy tables
+    db/queries.py        Every query the app runs (parameterised)
+    db/session.py        Engine and sessions (PostgreSQL or SQLite)
+    llm/                 Provider interface, Gemini and Ollama
+    schemas.py           Pydantic models
+  scripts/seed.py        8 fictional demo reports (EN/FR/ES/AR)
+  tests/                 pytest, fake LLM
 frontend/src/
-  pages/            Reports, Report detail, Agent chat (+ memory panel), Stats
-  components/ui.tsx Shared UI pieces
-  api.ts            Typed API client and SSE reader
-docker-compose.yml  PostgreSQL 16
+  pages/                 Reports, Report detail, Agent chat (+ memory panel), Stats
+  components/ui.tsx      Shared UI pieces
+  api.ts                 Typed API client and SSE reader
+docker-compose.yml       PostgreSQL 16
 ```
 
 See [HOW_IT_WORKS.md](HOW_IT_WORKS.md) for a walkthrough of the code.

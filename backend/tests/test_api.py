@@ -4,7 +4,8 @@ from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
-from app import agent, main
+from app import main
+from app.agent import graph as agent
 from tests.conftest import add_report
 from tests.test_extraction import ARTICLE, TRANSLATION, VALID
 

@@ -2,7 +2,8 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
-from app import agent, db
+from app import db
+from app.agent import graph as agent
 from tests.conftest import add_report
 
 
