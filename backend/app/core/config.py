@@ -3,7 +3,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-BACKEND_DIR = Path(__file__).resolve().parent.parent
+BACKEND_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BACKEND_DIR / ".env")
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "gemini").lower()
@@ -22,3 +22,5 @@ MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", 10))
 MAX_REPORT_CHARS = int(os.getenv("MAX_REPORT_CHARS", 20000))
 
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
+
+DEMO_USER = "demo"
